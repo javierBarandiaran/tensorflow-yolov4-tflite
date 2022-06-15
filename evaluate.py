@@ -3,6 +3,7 @@ from absl.flags import FLAGS
 import cv2
 import os
 import shutil
+from cv2 import IMREAD_GRAYSCALE
 import numpy as np
 import tensorflow as tf
 from core.yolov4 import filter_boxes
@@ -16,14 +17,16 @@ flags.DEFINE_string('framework', 'tf', 'select model type in (tf, tflite, trt)'
                     'path to weights file')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
-flags.DEFINE_integer('size', 416, 'resize images to')
+flags.DEFINE_integer('input_width', 384, 'resize images to')
+flags.DEFINE_integer('input_height', 224, 'resize images to')
 flags.DEFINE_string('annotation_path', "./data/dataset/val2017.txt", 'annotation path')
 flags.DEFINE_string('write_image_path', "./data/detection/", 'write image path')
 flags.DEFINE_float('iou', 0.5, 'iou threshold')
 flags.DEFINE_float('score', 0.25, 'score threshold')
 
 def main(_argv):
-    INPUT_SIZE = FLAGS.size
+    INPUT_WIDTH = FLAGS.input_width
+    INPUT_HEIGHT = FLAGS.input_height
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     CLASSES = utils.read_class_names(cfg.YOLO.CLASSES)
 
@@ -47,16 +50,33 @@ def main(_argv):
         print(output_details)
     else:
         saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])
-        infer = saved_model_loaded.signatures['serving_default']
+        infer = saved_model_loaded.signatures['serving_default']    
+        graph = infer.graph
+        
+        for op in graph.get_operations():
+            print(op.values())
 
     num_lines = sum(1 for line in open(FLAGS.annotation_path))
     with open(cfg.TEST.ANNOT_PATH, 'r') as annotation_file:
         for num, line in enumerate(annotation_file):
-            annotation = line.strip().split()
-            image_path = annotation[0]
-            image_name = image_path.split('/')[-1]
-            image = cv2.imread(image_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            annotation = line.strip()#.split()
+            kk = line.strip().split()
+            image_path = annotation.split('/')[1]
+            image_name = annotation.split('/')[-1]
+            image = cv2.imread(annotation, IMREAD_GRAYSCALE)
+
+            image_data = cv2.resize(np.copy(image), (INPUT_WIDTH, INPUT_HEIGHT))
+            image_data = image_data / 255.
+            image_data = image_data[np.newaxis, ...].astype(np.float32)
+            input_tensor = tf.expand_dims(image_data, axis=3)            
+            #batch_data = tf.constant(image_data)
+            pred_bbox = infer(input_tensor)
+            for key, value in pred_bbox.items():
+                boxes = value[:, :, 0:4]
+                pred_conf = value[:, :, 4:]
+
+
+            #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             bbox_data_gt = np.array([list(map(int, box.split(','))) for box in annotation[1:]])
 
             if len(bbox_data_gt) == 0:

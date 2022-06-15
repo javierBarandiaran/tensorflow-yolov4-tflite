@@ -24,7 +24,9 @@ def convolutional(input_layer, filters_shape, downsample=False, activate=True, b
     else:
         strides = 1
         padding = 'same'
-
+    #print("filter shape")
+    #print(filters_shape[-1])
+    print("filter shape", filters_shape[0], filters_shape[1], filters_shape[2], filters_shape[3])
     conv = tf.keras.layers.Conv2D(filters=filters_shape[-1], kernel_size = filters_shape[0], strides=strides, padding=padding,
                                   use_bias=not bn, kernel_regularizer=tf.keras.regularizers.l2(0.0005),
                                   kernel_initializer=tf.random_normal_initializer(stddev=0.01),

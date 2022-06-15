@@ -97,10 +97,11 @@ def load_config(FLAGS):
 
 def get_anchors(anchors_path, tiny=False):
     anchors = np.array(anchors_path)
+    numMasks = 2
     if tiny:
-        return anchors.reshape(2, 3, 2)
+        return anchors.reshape(2, numMasks, 2)
     else:
-        return anchors.reshape(3, 3, 2)
+        return anchors.reshape(3, numMasks, 2)
 
 def image_preprocess(image, target_size, gt_boxes=None):
 
@@ -111,7 +112,7 @@ def image_preprocess(image, target_size, gt_boxes=None):
     nw, nh  = int(scale * w), int(scale * h)
     image_resized = cv2.resize(image, (nw, nh))
 
-    image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0)
+    image_paded = np.full(shape=[ih, iw, 1], fill_value=128.0)
     dw, dh = (iw - nw) // 2, (ih-nh) // 2
     image_paded[dh:nh+dh, dw:nw+dw, :] = image_resized
     image_paded = image_paded / 255.
