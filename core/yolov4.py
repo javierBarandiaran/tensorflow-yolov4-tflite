@@ -239,7 +239,7 @@ def decode_tflite(conv_output, width, height, NUM_CLASS, STRIDES, ANCHORS, i=0, 
 
     conv_raw_dwdh = [conv_raw_dwdh_0, conv_raw_dwdh_1]
     for idx, dwdh in enumerate(conv_raw_dwdh):
-        dwdh = tf.exp(dwdh)# * ANCHORS[i][idx]
+        dwdh = tf.exp(dwdh) * ANCHORS[i][idx]
         conv_raw_dwdh[idx] = tf.reshape(dwdh, (1, -1, 2))
     pred_wh = tf.concat(conv_raw_dwdh, axis=1)
 

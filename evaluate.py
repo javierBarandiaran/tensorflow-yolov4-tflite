@@ -42,17 +42,16 @@ def main(_argv):
 
     # Build Model
     if FLAGS.framework == 'tflite':
-        interpreter = tf.lite.Interpreter(model_path=FLAGS.weights)
-        interpreter.allocate_tensors()
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
+        infer = tf.lite.Interpreter(model_path=FLAGS.weights)
+        infer.allocate_tensors()
+        input_details = infer.get_input_details()
+        output_details = infer.get_output_details()
         print(input_details)
         print(output_details)
     else:
         saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])
         infer = saved_model_loaded.signatures['serving_default']    
-        graph = infer.graph
-        
+        graph = infer.graph        
         for op in graph.get_operations():
             print(op.values())
 
@@ -70,7 +69,21 @@ def main(_argv):
             image_data = image_data[np.newaxis, ...].astype(np.float32)
             input_tensor = tf.expand_dims(image_data, axis=3)            
             #batch_data = tf.constant(image_data)
-            pred_bbox = infer(input_tensor)
+
+            output = infer.get_output_details()[0]  
+            input = infer.get_input_details()[0]  
+            print(input)
+            print(output)
+            infer.set_tensor(input['index'], input_tensor)
+            infer.invoke()
+            pred = [infer.get_tensor(output_details[i]['index']) for i in range(len(output_details))]
+            if FLAGS.model == 'yolov4' and FLAGS.tiny == True:
+                boxes, pred_conf = filter_boxes(pred[0], pred[1], score_threshold=0.25)
+            else:
+                boxes, pred_conf = filter_boxes(pred[0], pred[1], score_threshold=0.25)
+
+
+            #pred_bbox = infer(input_tensor)
             for key, value in pred_bbox.items():
                 boxes = value[:, :, 0:4]
                 pred_conf = value[:, :, 4:]
